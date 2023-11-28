@@ -9,14 +9,14 @@ from multiprocessing import Pool
 FramesPerAgent = 60*120 ## 2 mins of real timee if rendered.
 PHYSICS_FPS = 25
 
-Population = 50
+Population = 20
 LowPassFilter = 0.8
 
 ScoreForAngle = 0.8
 ScoreForPosition = 0.75
 
 ## Top percentage of the population will be used as parents and 1-TopPic will be the children.
-TopPic = 0.2
+TopPic = 0.4
 ParentsCount = int(TopPic*Population)
 ChildrenCount = Population-ParentsCount
 
@@ -24,7 +24,8 @@ ChildrenCount = Population-ParentsCount
 def main():
     ## Agents is a list of tuples.
     ## Each touple has the agent and the score. Need to change the inputs and outputs.
-    Agents = []   
+    Agents = []
+    eta = 0.4
     for _ in range(Population):
         lAgent = Agent()
         lAgent.addLayer("Input", 59, None, False)
@@ -90,11 +91,16 @@ def main():
             ## Create new child using the parents
             newChild = crossover(p1[0], p2[0])
             ## Mutate it and add it to the children's list
-            newChild.mutate(eta=0.1)
+            newChild.mutate(eta)
             newChildren.append([newChild, 0.0])
 
-        Agents = newChildren+parents
+        print(newChild.network[0][0][0])
 
+        # for pIdx in range(len(parents)):
+        #     parents[pIdx][0].mutate(eta)
+
+        Agents = newChildren+parents
+        eta = eta*0.9
         ## Break only if battery dies but before that save the weights...
 
 

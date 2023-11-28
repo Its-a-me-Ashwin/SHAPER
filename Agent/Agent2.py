@@ -1,6 +1,7 @@
 import numpy as np
 from math import exp
 import pymunk
+import random
 
 def TanH(x):
     return np.tanh(x)
@@ -19,6 +20,13 @@ def Linear(x):
 
 def ReLu(x):
     return (x+abs(x))/2
+
+def vectorize(mat):
+    size = mat.shape[0] * mat.shape[1]
+    return np.reshape(mat, size)
+
+def vecToMat(vec, shape):
+    return np.reshape(vec, shape)
 
 class Agent:
     def __init__(self):
@@ -102,6 +110,7 @@ class Agent:
     ## Adds randomness to the network and normalizes the values.
     def mutate(self, eta=0.01):
         for idx in range(len(self.network)):
+            np.random.seed(random.randint(1, 1000000))
             rand = (np.array(np.random.random(self.network[idx].shape))-0.5)*2*eta
             self.network[idx] = self.network[idx] + rand
             self.network[idx] = (self.network[idx] - np.min(self.network[idx]))/(np.max(self.network[idx]) - np.min(self.network[idx]))
@@ -132,10 +141,19 @@ def crossover(agent1, agent2):
     ## Looks like while creating a new child we are missing something.
     numOfMatrices = len(agent1.network)
     for matIdx in range(numOfMatrices):
-        if np.random.random() > 0.5:
-            newAgent.network[matIdx] = agent1.network[matIdx]
-        else:
-            newAgent.network[matIdx] = agent2.network[matIdx]
+        shape = agent1.network[matIdx].shape
+        agent1Vec = vectorize(agent1.network[matIdx])
+        agent2Vec = vectorize(agent2.network[matIdx])
+
+        newVector = []
+        for idx in range(agent1Vec.shape[0]):
+            if np.random.random() > 0.5:
+               newVector.append(agent1Vec[idx])
+            else:
+                newVector.append(agent2Vec[idx])
+        newVector=np.array(newVector)
+        newMat = vecToMat(newVector, shape)
+        newAgent.network[matIdx] = newMat
 
     return newAgent
 
@@ -199,7 +217,7 @@ def initResourcers(goalState):
 
     return resources
 
-def scoreFrame(polygon, goalState, scoreData=(0.8, 0.75)):
+def scoreFrame(polygon, goalState, scoreData=(100, 0.75)):
     ScoreForAngle = scoreData[0]
     ScoreForPosition = scoreData[1]
     body = polygon.body
@@ -252,15 +270,15 @@ def playOne(agent, resource, LowPassFilter=0.8, framesPerAgent=120*60, PHYSICS_F
             for _ in range(len(arm.Objects)):
                 newAngles.append((rawOut[k]+1)*(PI/2))
                 k+=1 
-            arm.setAngles(newAngles)
+            arm.agentToPhysics(newAngles)
 
         ## Render only some of the frames. Makes it more smoother.
         for _ in range(PHYSICS_FPS):
             space.step(DT/float(PHYSICS_FPS))
         
         ## GetAngles updates the angles of the arm based on the current arm location.
-        for arm in arms:
-            arm.getAngles()
+        # for arm in arms:
+        #     arm.getAngles()
         
         ## Get score for this perticular frame.
         frameScore = scoreFrame(polygon, goalState)
@@ -271,7 +289,7 @@ def playOne(agent, resource, LowPassFilter=0.8, framesPerAgent=120*60, PHYSICS_F
         # draw(space, window, draw_options)
         #clock.tick(FPS)
         framNumber += 1
-    print("Score", score)
+    print("Loss", score)
     return score
 
 
@@ -415,10 +433,15 @@ class Arm1():
         terminalArmSegment = self.Objects[-1]
 
 
-    ## Inputs are between -1 and 1, convert it to 0 to 2PI
+    ## Inputs are between -1 and 1, convert it to MAX SPEED
     ## Converts the agent's output to a format that the physics engine can work with.
     def agentToPhysics(self, agentData):
-        inputs = list(map(lambda x: ((x+1)/2.0)*2*PI, inputs))
+        if len(agentData) != len(self.Objects):
+            print("Angent output shape incorrect")
+            return
+        inputs = list(map(lambda x: ((x+1)/2.0)*4, agentData))
+        for idx in range(len(inputs)):
+            self.Objects[idx]["Motor"].rate = inputs[idx]
         return inputs
 
     ## Converts the data from the physcis engine to a format that can be processed by the agent
@@ -479,25 +502,24 @@ def centerToEndPoints(centerPos, length, angle):
             ]
 
 
-if __name__ == "__main__":
-    space = pymunk.Space()
-    arm = Arm1(space, (250, 250))
-    arm.addJoint(100)
-    arm.addJoint(100, True)
+# if __name__ == "__main__":
+#     space = pymunk.Space()
+#     arm = Arm1(space, (250, 250))
+#     arm.addJoint(100)
+#     arm.addJoint(100, True)
 
-    curAngles = arm.getAngles()
-    print("Current Angles:", curAngles)
+#     curAngles = arm.getAngles()
+#     print("Current Angles:", curAngles)
 
-    arm.setAngles([3.14, 0])
+#     arm.setAngles([3.14, 0])
 
-    while True:
-        curAngles = arm.getAngles()
-        print("Current Angles:", curAngles)
+#     while True:
+#         curAngles = arm.getAngles()
+#         print("Current Angles:", curAngles)
 
 
 import pymunk
 import pygame
-from Physics.utils import *
 from math import atan2
 
 class Polygon():
@@ -558,3 +580,20 @@ if __name__ == "__main__":
     ## Get an output for the random input.
     out = a.forwardPass(input, True)
     print(out)
+
+
+    p1 = Agent()
+
+    p1.addLayer("Input", 1, None, False)
+    p1.addLayer("H1", 10, Sigmoid, False)
+    p1.addLayer("Output", 1, Sigmoid, True)
+
+    p2 = Agent()
+
+    p2.addLayer("Input", 1, None, False)
+    p2.addLayer("H1", 10, Sigmoid, False)
+    p2.addLayer("Output", 1, Sigmoid, True)
+
+    for _ in range(10):
+        newKid = crossover(p1, p2)
+        print(newKid.network[0][0])
