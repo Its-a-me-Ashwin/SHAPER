@@ -1,9 +1,9 @@
 import pymunk
 from random import sample
 from Agent.Agent2 import *
-from Physics.arm2 import Arm1
-from Physics.polygon import Polygon
-from Physics.utils import *
+#from Physics.arm2 import Arm1
+#from Physics.polygon import Polygon
+#from Physics.utils import *
 from multiprocessing import Pool
 
 FramesPerAgent = 60*120 ## 2 mins of real timee if rendered.
@@ -43,13 +43,10 @@ def main():
         generation += 1
         ## Generate the polygon and the goal orientation. For now this is constant.
         ## Goal consists of the final poistion and angle of the body and the positions of the edges.
-        goal = [
+        goal = (
             np.random.random()*2*PI, #Angle
             150, 150, # poosition of the body
-        ]
-
-        ## Make it a tuple as it needs to be hashable.
-        goal = tuple(goal)
+        )
 
         ## Generate the resources for each agent to play the game.
         resources = []
@@ -78,6 +75,10 @@ def main():
         Agents.sort(key=lambda x: x[1], reverse=True)
         parents = Agents[-ParentsCount:]
 
+        if generation%10 == 0:
+            for parent in parents:
+                parent[0].save("./TEST" + str(generation))
+
         ## Print the scores of the parents
         print("Top players: ",list(map(lambda x: x[1], parents)))
 
@@ -94,7 +95,6 @@ def main():
             newChild.mutate(eta)
             newChildren.append([newChild, 0.0])
 
-        print(newChild.network[0][0][0])
 
         # for pIdx in range(len(parents)):
         #     parents[pIdx][0].mutate(eta)

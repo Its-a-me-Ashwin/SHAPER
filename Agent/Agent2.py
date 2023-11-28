@@ -2,6 +2,8 @@ import numpy as np
 from math import exp
 import pymunk
 import random
+import os
+from matplotlib import pyplot as plt
 
 def TanH(x):
     return np.tanh(x)
@@ -93,15 +95,23 @@ class Agent:
     def vecToMat(self):
         pass
 
-    def save(self):
+    def save(self, path):
         if self.complete:
-            ## TODO implement me!!
-            pass
+            try:
+                os.mkdir(path)
+            except FileExistsError:
+                print("Folder already exists")
+                pass
+            for idx in range(len(self.network)):
+                filePath = os.path.join(path, "network_" + str(idx))
+                np.save(filePath, self.network[idx])
 
     def load(self, path):
-        if not self.complete:
-            ## TODO Implement me!!
-            pass
+        if self.complete:
+            for idx in range(len(self.network)):
+                filePath = os.path.join(path, "network_" + str(idx) + ".npy")
+                self.network[idx] = np.load(filePath)
+
 
     def normalize(self, x):
         for idx in range(len(self.network)):
@@ -233,61 +243,59 @@ def scoreFrame(polygon, goalState, scoreData=(100, 0.75)):
     return score
 
 
-def playOne(agent, resource, LowPassFilter=0.8, framesPerAgent=120*60, PHYSICS_FPS=25, DT=1/60.0):
+def playOne(agent, resource, LowPassFilter=0.8, framesPerAgent=120*60, PHYSICS_FPS=25, DT=1/60.0, agentActive=10):
     ## Get the resources for the agent
     arms = resource["Arms"]
     space = resource["Space"]
     polygon = resource["Object"]
     goalState = resource["Goal"]
 
+
+    print("Playing a game for an agent. Goal: ", goalState)
     score = 0
     framNumber = 0
     while framNumber < framesPerAgent:
-        inputVector = []
-        ## Input involving the arms.
-        for arm in arms:
-            lTempData = arm.physicsToAgent()
-            inputVector.extend(lTempData["Angles"])
-            inputVector.extend(lTempData["Rates"])
-            inputVector.extend(lTempData["Positions"])
-        
-        ## Input involving the polygon.
-        body = polygon.body
-        polygonData = [body.position[0], body.position[1]]
-        inputVector.extend(polygonData)
-        
-        ## Input regarding the goal.
-        inputVector.extend(goalState)
+        if framNumber%agentActive == 0:
+            ## Agent only controls the arm every 10 frames.
+            inputVector = []
+            ## Input involving the arms.
+            for arm in arms:
+                lTempData = arm.physicsToAgent()
+                inputVector.extend(lTempData["Angles"])
+                inputVector.extend(lTempData["Rates"])
+                inputVector.extend(lTempData["Positions"])
+            
+            ## Input involving the polygon.
+            body = polygon.body
+            polygonData = [body.position[0], body.position[1]]
+            inputVector.extend(polygonData)
+            
+            ## Input regarding the goal.
+            inputVector.extend(goalState)
 
-        inputVector = np.array(inputVector)
+            inputVector = np.array(inputVector)
 
-        ## Get the prediction from the agent.
-        rawOut = agent[0].forwardPass(inputVector)
-        ## Use the agents output to manipulate the arms.
-        k = 0
-        for arm in arms:
-            newAngles = []
-            for _ in range(len(arm.Objects)):
-                newAngles.append((rawOut[k]+1)*(PI/2))
-                k+=1 
-            arm.agentToPhysics(newAngles)
+            ## Get the prediction from the agent.
+            rawOut = agent[0].forwardPass(inputVector)
+            print("Agnet Input:", inputVector[0], "\nOutput:", rawOut[0])
+            ## Use the agents output to manipulate the arms.
+            k = 0
+            for arm in arms:
+                newRates = []
+                for _ in range(len(arm.Objects)):
+                    newRates.append((rawOut[k]+1)*(PI/2))
+                    k+=1 
+                arm.agentToPhysics(newRates)
 
         ## Render only some of the frames. Makes it more smoother.
         for _ in range(PHYSICS_FPS):
             space.step(DT/float(PHYSICS_FPS))
-        
-        ## GetAngles updates the angles of the arm based on the current arm location.
-        # for arm in arms:
-        #     arm.getAngles()
         
         ## Get score for this perticular frame.
         frameScore = scoreFrame(polygon, goalState)
         ## Low pass filter.
         score = LowPassFilter*score + (1-LowPassFilter)*frameScore
         
-        # polygon.draw(window)
-        # draw(space, window, draw_options)
-        #clock.tick(FPS)
         framNumber += 1
     print("Loss", score)
     return score
@@ -439,10 +447,8 @@ class Arm1():
         if len(agentData) != len(self.Objects):
             print("Angent output shape incorrect")
             return
-        inputs = list(map(lambda x: ((x+1)/2.0)*4, agentData))
-        for idx in range(len(inputs)):
-            self.Objects[idx]["Motor"].rate = inputs[idx]
-        return inputs
+        for idx in range(len(agentData)):
+            self.Objects[idx]["Motor"].rate = agentData[idx]
 
     ## Converts the data from the physcis engine to a format that can be processed by the agent
     ## Normalize the angles and the position of the bodies. Convert to radians if necessary.
@@ -572,6 +578,21 @@ if __name__ == "__main__":
     a.addLayer("H2", 50, Sigmoid, False)
     a.addLayer("H3", 20, ReLu, False)
     a.addLayer("Output", 10, None, True)
+
+    a.save("./modelTest")
+
+    loaded = Agent()
+
+    ## Add all the layers as required.
+    loaded.addLayer("Input", 28, None, False)
+    loaded.addLayer("H1", 150, Sigmoid, False)
+    loaded.addLayer("H2", 50, Sigmoid, False)
+    loaded.addLayer("H3", 20, ReLu, False)
+    loaded.addLayer("Output", 10, None, True)
+
+    loaded.load("./modelTest")
+
+    print(loaded.network[0] == a.network[0])
 
     ## Generate a random input.
     input = np.random.rand(1,28)
