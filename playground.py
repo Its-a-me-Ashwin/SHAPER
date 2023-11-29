@@ -27,6 +27,54 @@ def setup():
 
 afterKFrames = 300
 
+# def on_collision_arbiter_begin(arbiter, space, data):
+#     print("hello")
+#     return True
+        # '''
+        # The crux of forming the joint.
+        # This function does 2 things - 
+        #     1. Check how close the polygon is. and 
+        #     2. if the polygon is very close, form a pymunk pinJoint.
+
+        # Note: For this to be executed, there needs to be an event waiting for a collision to happen.
+        # The 3 lines mentioned below must be replicated for each arm:
+
+        # collision = space.add_collision_handler(40, 20) #hard coded these since by default the collision type of arm and polygon is set to 20 and 40 respectively.
+        # collision.begin = arm.on_collision_arbiter_begin #arm is an object of class Arm1
+        # collision.data["polygon"] = polygon.body # polygon is an object of Polygon
+        # collision.data["arms_data"] = armData # armData is a disctionary that contains the information about arms.
+        #     e.g. armData = {"Arm_1": (arm1.Objects[-1]), "Arm_2": (arm2.Objects[-1])}
+
+        # These lines must be present in the main file that is taking care of the simulation. 
+        # Reason: on_collision_arbiter_begin must be called after the event has been triggered.
+        # '''
+        # polygon = data["polygon"]
+        # closest_arm = None
+        # min_distance = float('inf')
+        # armObject = None
+
+        # for key in data.get("arms_data"):
+        #     contact_point = arbiter.contact_point_set.points[0].point_a
+        #     temp = data.get("arms_data")[key]
+        #     current_arm = data.get("arms_data")[key].Objects[-1]["Object"]
+        #     current_arm_length = data.get("arms_data")[key]["Length"]
+        #     end_of_current_arm = current_arm.position + (0, current_arm_length / 2)
+        #     distance = sqrt(
+        #         (end_of_current_arm.x - contact_point.x) ** 2 + (end_of_current_arm.y - contact_point.y) ** 2
+        #     )
+    
+        #     if distance < min_distance:
+        #         min_distance = distance
+        #         closest_arm = current_arm
+        #         closest_arm_length= current_arm_length
+        #         armObject = temp
+        
+        # if armObject.pinJoint!=None and closest_arm is not None:
+        #     armObject.pinJoint = pymunk.PinJoint(closest_arm, polygon.body, (0, closest_arm_length / 2),
+        #                             polygon.body.world_to_local(contact_point))
+        #     space.add(armObject.pinJoint)
+
+
 ## Function in which all the environment is simulated. 
 def run(window, space, width=WIDTH, height=HEIGHT):
     run = True
@@ -56,24 +104,24 @@ def run(window, space, width=WIDTH, height=HEIGHT):
     arm1 = Arm1(space, (250, 250))
     arm1.addJoint(100)
     arm1.addJoint(50)
-    arm1.addJoint(50, True)
+    arm1.addJoint(50,rotation=0.6, end=True)
 
-    arm2 = Arm1(space, (750, 250),2)
+    arm2 = Arm1(space, (350, 250),2)
     arm2.addJoint(150)
     arm2.addJoint(100)
-    arm2.addJoint(50, True)
+    arm2.addJoint(50,rotation=0.6, end=True)
 
 
     arm3 = Arm1(space, (500, 50),3)
     arm3.addJoint(250)
     arm3.addJoint(150)
-    arm3.addJoint(100, True)
+    arm3.addJoint(100,rotation=0.6, end=True)
 
     arms = [arm1, arm2, arm3]
 
     armData = {"Arm_1": arm1, "Arm_2": arm2, "Arm_3": arm3}
     collision = space.add_collision_handler(40, 20) #hard coded these since by default the collision type of arm and polygon is set to 20 and 40 respectively.
-    collision.begin = arm1.on_collision_arbiter_begin #arm is an object of class Arm1
+    collision.begin = polygon.on_collision_arbiter_begin #arm is an object of class Arm1
     
     
     ## There is a problem. If we render every frame it looks janky. 

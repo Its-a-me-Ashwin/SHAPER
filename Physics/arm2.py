@@ -19,6 +19,7 @@ I_ = 0.0005
 
 class Arm1():
     def __init__(self, space, anchorPoistion, group=1):
+
         self.space = space
         if len(anchorPoistion) != 2:
             print("Error size incorrect")
@@ -44,9 +45,10 @@ class Arm1():
         self.pinJoint = None
 
     def addJoint(self, length, rotation = 0, collision_type = 20, end=False):
+    
         if self.complete:
             # if this is the end of the arm, set a collision type to it so that the gripper can use it.
-            self.Objects[-1]["Shape"].collision_type=collision_type
+            # self.Objects[-1]["Shape"].collision_type=collision_type
             return
         if len(self.Objects) == 0: 
             ## Need to add an anchor.
@@ -124,7 +126,12 @@ class Arm1():
             self.space.add(newArmShape)
             self.space.add(newJoint)
             self.space.add(newMotor)
+        
+   
         if end:
+            self.Objects[-1]["Shape"].collision_type=collision_type
+         
+
             self.complete = True
             self.CurrentAngles = [0]*len(self.Objects)
             self.diffCounter = [0]*len(self.Objects)
@@ -199,51 +206,56 @@ class Arm1():
             self.Objects[objIdx]["Motor"].rate = P_*diff[objIdx] + D_*self.Objects[objIdx]["Motor"].rate + I_*self.diffCounter[objIdx]
 
     # Collision Handler
-    def on_collision_arbiter_begin(self, arbiter, space, data):
-        '''
-        The crux of forming the joint.
-        This function does 2 things - 
-            1. Check how close the polygon is. and 
-            2. if the polygon is very close, form a pymunk pinJoint.
+    # def on_collision_arbiter_begin(self, arbiter, space, data):
+    #     '''
+    #     The crux of forming the joint.
+    #     This function does 2 things - 
+    #         1. Check how close the polygon is. and 
+    #         2. if the polygon is very close, form a pymunk pinJoint.
 
-        Note: For this to be executed, there needs to be an event waiting for a collision to happen.
-        The 3 lines mentioned below must be replicated for each arm:
+    #     Note: For this to be executed, there needs to be an event waiting for a collision to happen.
+    #     The 3 lines mentioned below must be replicated for each arm:
 
-        collision = space.add_collision_handler(40, 20) #hard coded these since by default the collision type of arm and polygon is set to 20 and 40 respectively.
-        collision.begin = arm.on_collision_arbiter_begin #arm is an object of class Arm1
-        collision.data["polygon"] = polygon.body # polygon is an object of Polygon
-        collision.data["arms_data"] = armData # armData is a disctionary that contains the information about arms.
-            e.g. armData = {"Arm_1": (arm1.Objects[-1]), "Arm_2": (arm2.Objects[-1])}
+    #     collision = space.add_collision_handler(40, 20) #hard coded these since by default the collision type of arm and polygon is set to 20 and 40 respectively.
+    #     collision.begin = arm.on_collision_arbiter_begin #arm is an object of class Arm1
+    #     collision.data["polygon"] = polygon.body # polygon is an object of Polygon
+    #     collision.data["arms_data"] = armData # armData is a disctionary that contains the information about arms.
+    #         e.g. armData = {"Arm_1": (arm1.Objects[-1]), "Arm_2": (arm2.Objects[-1])}
 
-        These lines must be present in the main file that is taking care of the simulation. 
-        Reason: on_collision_arbiter_begin must be called after the event has been triggered.
-        '''
-        polygon = data["polygon"]
-        closest_arm = None
-        min_distance = float('inf')
-        armObject = None
+    #     These lines must be present in the main file that is taking care of the simulation. 
+    #     Reason: on_collision_arbiter_begin must be called after the event has been triggered.
+    #     '''
+    #     polygon = data["polygon"]
+    #     closest_arm = None
+    #     min_distance = float('inf')
+    #     armObject = None
 
-        for key in data.get("arms_data"):
-            contact_point = arbiter.contact_point_set.points[0].point_a
-            temp = data.get("arms_data")[key]
-            current_arm = data.get("arms_data")[key].Objects[-1]["Object"]
-            current_arm_length = data.get("arms_data")[key]["Length"]
-            end_of_current_arm = current_arm.position + (0, current_arm_length / 2)
-            distance = sqrt(
-                (end_of_current_arm.x - contact_point.x) ** 2 + (end_of_current_arm.y - contact_point.y) ** 2
-            )
+    #     for key in data.get("arms_data"):
+    #         contact_point = arbiter.contact_point_set.points[0].point_a
+    #         temp = data.get("arms_data")[key]
+    #         current_arm = data.get("arms_data")[key].Objects[-1]["Object"]
+    #         current_arm_length = data.get("arms_data")[key]["Length"]
+    #         end_of_current_arm = current_arm.position + (0, current_arm_length / 2)
+    #         distance = sqrt(
+    #             (end_of_current_arm.x - contact_point.x) ** 2 + (end_of_current_arm.y - contact_point.y) ** 2
+    #         )
     
-            if distance < min_distance:
-                min_distance = distance
-                closest_arm = current_arm
-                closest_arm_length= current_arm_length
-                armObject = temp
+    #         if distance < min_distance:
+    #             min_distance = distance
+    #             closest_arm = current_arm
+    #             closest_arm_length= current_arm_length
+    #             armObject = temp
         
-        if armObject.pinJoint!=None and closest_arm is not None:
-            armObject.pinJoint = pymunk.PinJoint(closest_arm, polygon.body, (0, closest_arm_length / 2),
-                                    polygon.body.world_to_local(contact_point))
-            space.add(armObject.pinJoint)
+    #     if armObject.pinJoint!=None and closest_arm is not None:
+    #         armObject.pinJoint = pymunk.PinJoint(closest_arm, polygon.body, (0, closest_arm_length / 2),
+    #                                 polygon.body.world_to_local(contact_point))
+    #         space.add(armObject.pinJoint)
 
+    def grab(self,anchor,polygon):
+        if self.pinJoint is None and self.Objects[-1]["Object"] is not None:
+            self.pinJoint = pymunk.PinJoint(self.Objects[-1]["Object"], polygon, (0, self.Objects[-1]["Length"] / 2),
+                                    polygon.world_to_local(anchor))
+            self.space.add(self.pinJoint)
 
     def dropPolygon(self):
         '''
