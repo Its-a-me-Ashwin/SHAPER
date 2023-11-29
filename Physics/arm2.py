@@ -206,7 +206,7 @@ class Arm1():
             1. Check how close the polygon is. and 
             2. if the polygon is very close, form a pymunk pinJoint.
         '''
-        min_distance = float('inf')
+        min_distance = 10
         closest_arm = self.Objects[-1].get("Object", None)
 
         if arbiter.shapes[0].collision_type == 40:
@@ -224,13 +224,9 @@ class Arm1():
         distance = sqrt(
             (end_of_current_arm.x - contact_point.x) ** 2 + (end_of_current_arm.y - contact_point.y) ** 2
         )
-        if distance < min_distance:
-            min_distance = distance
-            closest_arm = current_arm
-            closest_arm_length= current_arm_length
 
-        if closest_arm is not None and not self.pinJoint:
-            self.pinJoint = pymunk.PinJoint(closest_arm, polygon.body, (0, closest_arm_length / 2),
+        if distance < min_distance and current_arm is not None and not self.pinJoint:
+            self.pinJoint = pymunk.PinJoint(current_arm, polygon.body, (0, current_arm_length / 2),
                                     polygon.body.world_to_local(contact_point))
             space.add(self.pin_joint)
         
