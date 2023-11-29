@@ -2,7 +2,6 @@ import pymunk
 import pygame
 import pymunk.pygame_util
 from Agent.Agent2 import *
-from Physics.arm import *
 from Physics.arm2 import *
 from Physics.polygon import *
 from Physics.utils import *
@@ -36,14 +35,14 @@ def run(window, space, width=WIDTH, height=HEIGHT):
     addFloor(space)
 
     ## Make an agegnt.
-    agent = Agent()
+    # agent = Agent()
 
     ## Add all the layers as required.
-    agent.addLayer("Input", 54, None, False)
-    agent.addLayer("H1", 256, Sigmoid, False)
-    agent.addLayer("H2", 128, Sigmoid, False)
-    agent.addLayer("H3", 64, Sigmoid, False)
-    agent.addLayer("Output", 9, None, True)
+    # agent.addLayer("Input", 54, None, False)
+    # agent.addLayer("H1", 256, Sigmoid, False)
+    # agent.addLayer("H2", 128, Sigmoid, False)
+    # agent.addLayer("H3", 64, Sigmoid, False)
+    # agent.addLayer("Output", 9, None, True)
 
     ## Every 10 frames the agent gives an output to the engine.
     agentActive = 60
@@ -84,36 +83,39 @@ def run(window, space, width=WIDTH, height=HEIGHT):
             if event.type == pygame.QUIT:
                 run = False
                 break
-
-        if frameNumber%agentActive == 0:
-            inputVector = []
-            for arm in arms:
-                lTempData = arm.physicsToAgent()
-                inputVector.extend(lTempData["Angles"])
-                inputVector.extend(lTempData["Rates"])
-                inputVector.extend(lTempData["Positions"])
-            inputVector = np.array(inputVector)
-            rawOut = agent.forwardPass(inputVector)
-            print("Out:", rawOut)
-            ## Use the agents output to manimulate the arms.
-            k = 0
-            for arm in arms:
-                newAngles = []
-                for idx in range(len(arm.Objects)):
-                    newAngles.append((rawOut[k]+1)*(PI/2))
-                    k+=1 
-                arm.setAngles(newAngles)
+        
+        arm1.gripPolygon(polygon)
+        arm2.gripPolygon(polygon)
+        arm3.gripPolygon(polygon)
+        # if frameNumber%agentActive == 0:
+        #     inputVector = []
+        #     for arm in arms:
+        #         lTempData = arm.physicsToAgent()
+        #         inputVector.extend(lTempData["Angles"])
+        #         inputVector.extend(lTempData["Rates"])
+        #         inputVector.extend(lTempData["Positions"])
+        #     inputVector = np.array(inputVector)
+        #     rawOut = agent.forwardPass(inputVector)
+        #     print("Out:", rawOut)
+        #     ## Use the agents output to manimulate the arms.
+        #     k = 0
+        #     for arm in arms:
+        #         newAngles = []
+        #         for idx in range(len(arm.Objects)):
+        #             newAngles.append((rawOut[k]+1)*(PI/2))
+        #             k+=1 
+        #         arm.setAngles(newAngles)
 
         ## Render only some of the frames. Makes it more smoother.
         for x in range(PHYSICS_FPS):
             space.step(DT/float(PHYSICS_FPS))
 
         
-        for arm in arms:
-            arm.getAngles()
+        # for arm in arms:
+        #     arm.getAngles()
         polygon.draw(window)
         draw(space, window, draw_options)
-        clock.tick(FPS)
+        clock.tick(10)
 
         frameNumber += 1
 

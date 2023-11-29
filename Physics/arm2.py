@@ -1,7 +1,7 @@
 import pymunk
 from pymunk import SimpleMotor
 #from Physics.utils import *
-from math import atan2, sin, cos
+from math import atan2, sin, cos, sqrt
 #from Physics.gripper import *
 #from Physics.armsection import *
 #from Physics.ball import *
@@ -39,8 +39,14 @@ class Arm1():
         ## It will be incremented every time the arbiter is executed successfully. 
         self.diffCounter = []
 
-    def addJoint(self, length, end=False):
+        # One purpose of the arm is to track the polygon so that it can catch it.
+        # This parameters govern it
+        self.pinJoint = None
+
+    def addJoint(self, length, rotation = 0, collision_type = 20, end=False):
         if self.complete:
+            # if this is the end of the arm, set a collision type to it so that the gripper can use it.
+            self.Objects[-1]["Shape"].collision_type=collision_type
             return
         if len(self.Objects) == 0: 
             ## Need to add an anchor.
@@ -61,7 +67,7 @@ class Arm1():
 
             ## Add constrains and motors to the bodies.
             newJoint = pymunk.PinJoint(newArmObject, newAnchor, (0, -length/2), (0, 0))
-            newMotor = pymunk.SimpleMotor(newArmObject, newAnchor, 0.0)
+            newMotor = pymunk.SimpleMotor(newArmObject, newAnchor, rotation)
 
             ## Disable colisions between the arms. 
             ## Might remove this based on hhow the model performs.
@@ -72,7 +78,8 @@ class Arm1():
                                 "Object":newArmObject,
                                 "Motor": newMotor,
                                 "Middle" : (self.anchor[0], self.anchor[1]+length/2),
-                                "Length": length
+                                "Length": length,
+                                "Shape": newArmShape
                                 })
 
             ## Add all the objects and shapes to the space.
@@ -100,7 +107,7 @@ class Arm1():
 
             ## Add constrains and motors to the bodies.
             newJoint = pymunk.PinJoint(newArmObject, prevBody, (0, -length/2), (0, prevLength/2))
-            newMotor = pymunk.SimpleMotor(newArmObject, prevBody, 0.0)
+            newMotor = pymunk.SimpleMotor(newArmObject, prevBody, rotation)
 
             ## Disable colision between the arms.
             newArmShape.filter = self.shapeFilter
@@ -131,11 +138,6 @@ class Arm1():
     def preHit(self, arbiter, space, data):
         print("Pre hit called for arm")
         pass
-
-    def grab(self):
-        ## Find the collision between the last arm segment and the polygon. 
-        ## If collision present or distance is small then add a pin constrain on them.
-        terminalArmSegment = self.Objects[-1]
 
 
     ## Inputs are between -1 and 1, convert it to 0 to 2PI
@@ -195,6 +197,66 @@ class Arm1():
                 continue
             self.diffCounter[objIdx] += diff[objIdx]
             self.Objects[objIdx]["Motor"].rate = P_*diff[objIdx] + D_*self.Objects[objIdx]["Motor"].rate + I_*self.diffCounter[objIdx]
+
+    # Collision Handler
+    def on_collision_arbiter_begin(self, arbiter, space, data):
+        '''
+        The crux of forming the joint.
+        This function does 2 things - 
+            1. Check how close the polygon is. and 
+            2. if the polygon is very close, form a pymunk pinJoint.
+        '''
+        min_distance = float('inf')
+        closest_arm = self.Objects[-1].get("Object", None)
+
+        if arbiter.shapes[0].collision_type == 40:
+            polygon= arbiter.shapes[0]
+            # arm=arbiter.shapes[1]
+        elif arbiter.shapes[1].collision_type == 40:
+            polygon=arbiter.shapes[1]
+            # arm=arbiter.shapes[0]
+
+        contact_point = arbiter.contact_point_set.points[0].point_a
+        current_arm = closest_arm
+        current_arm_length = self.Objects[-1]["Length"]
+        end_of_current_arm = current_arm.position + (0, current_arm_length / 2)
+
+        distance = sqrt(
+            (end_of_current_arm.x - contact_point.x) ** 2 + (end_of_current_arm.y - contact_point.y) ** 2
+        )
+        if distance < min_distance:
+            min_distance = distance
+            closest_arm = current_arm
+            closest_arm_length= current_arm_length
+
+        if closest_arm is not None and not self.pinJoint:
+            self.pinJoint = pymunk.PinJoint(closest_arm, polygon.body, (0, closest_arm_length / 2),
+                                    polygon.body.world_to_local(contact_point))
+            space.add(self.pin_joint)
+        
+        return True
+
+    def gripPolygon(self, polygon):
+        '''
+        When called, this method checks the end of the arm is making contact with the polygon provided
+        as argument and builds a pinJoint b/w the end and the polygon.
+        '''
+        arm_body = 20
+        polygon_body = 40
+        arms_data = {"Arm_1": self.Objects[-1]}
+        collision = self.space.add_collision_handler(polygon_body, arm_body)
+        collision.begin = Arm1.on_collision_arbiter_begin
+        collision.data["arms_data"] = arms_data
+
+
+    def dropPolygon(self):
+        '''
+        When called, this method removes the pinJoin of the arm if it has any.
+        '''
+
+        if self.pinJoint is not None:
+            space.remove(self.pinJoint)
+            self.pinJoint = None
 
 def centerToEndPoints(centerPos, length, angle):
     return [centerPos[0]+length*cos(angle), centerPos[1]+length*sin(angle),

@@ -4,7 +4,7 @@ from Physics.utils import *
 from math import atan2
 
 class Polygon():
-    def __init__(self, space, originalAngle, goalAngle, points):
+    def __init__(self, space, originalAngle, goalAngle, points, collision_type = 40):
         self.orginal = originalAngle
         self.goal = goalAngle
         self.currentAngle = originalAngle
@@ -26,6 +26,7 @@ class Polygon():
         self.shape = pymunk.Poly(self.body, self.points)
         self.shape.density = 1
         self.shape.friction = 1
+        self.shape.collision_type = collision_type
         space.add(self.body, self.shape)
 
 
