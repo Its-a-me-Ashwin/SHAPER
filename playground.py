@@ -119,7 +119,9 @@ def run(window, space, width=WIDTH, height=HEIGHT):
 
     arms = [arm1, arm2, arm3]
 
-    armData = {"Arm_1": arm1, "Arm_2": arm2, "Arm_3": arm3}
+    #arm.dropPolygon() ## Works
+
+    armData = {"Arm_1": (arm1, False), "Arm_2": (arm2, True), "Arm_3": (arm3, True)} ## modify this to grab stuff
     collision = space.add_collision_handler(40, 20) #hard coded these since by default the collision type of arm and polygon is set to 20 and 40 respectively.
     collision.begin = polygon.on_collision_arbiter_begin #arm is an object of class Arm1
     

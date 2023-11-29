@@ -48,13 +48,13 @@ class Polygon():
         polygon = data["polygon"]
         min_distance = float('inf')
         armObject = None
-
+        armObjKey= ""
         for key in data.get("arms_data"):
-           
-            last_joint=data.get("arms_data")[key].Objects[-1]
+
+            last_joint=data.get("arms_data")[key][0].Objects[-1]
 
             contact_point = arbiter.contact_point_set.points[0].point_a
-            arm=data.get("arms_data")[key]
+            arm=data.get("arms_data")[key][0]
 
             last_joint_object=last_joint["Object"]
             last_joint_length=last_joint["Length"]
@@ -65,8 +65,11 @@ class Polygon():
             if distance < min_distance:
                 min_distance = distance
                 armObject = arm
+                armObjKey = key
 
-        armObject.grab(contact_point,polygon)
-    
-
+        try:
+            if data.get("arms_data")[armObjKey][1]:
+                armObject.grab(contact_point,polygon)
+        except KeyError:
+            return True
         return True
