@@ -49,7 +49,7 @@ def run(window, space, width=WIDTH, height=HEIGHT):
 
 
     ## The object that needs to be grabbed and fondled
-    polygon = Polygon(space, (10,10), (0,0), [[150, 100], [250, 100], [250, 200]])
+    polygon = Polygon(space, (10,10), (0,0), [[100, 100], [200, 100], [200, 200]])
 
     arms = []
 
@@ -71,7 +71,11 @@ def run(window, space, width=WIDTH, height=HEIGHT):
 
     arms = [arm1, arm2, arm3]
 
-
+    armData = {"Arm_1": arm1, "Arm_2": arm2, "Arm_3": arm3}
+    collision = space.add_collision_handler(40, 20) #hard coded these since by default the collision type of arm and polygon is set to 20 and 40 respectively.
+    collision.begin = arm1.on_collision_arbiter_begin #arm is an object of class Arm1
+    
+    
     ## There is a problem. If we render every frame it looks janky. 
     ## Fix is to run the physics engine at 600Hz and render the stuff at 60Hz.
     ## We also need to set a rate for the AI to run in the background. When the agent responds the physics engine will react.
@@ -83,10 +87,8 @@ def run(window, space, width=WIDTH, height=HEIGHT):
             if event.type == pygame.QUIT:
                 run = False
                 break
-        
-        arm1.gripPolygon(polygon)
-        arm2.gripPolygon(polygon)
-        arm3.gripPolygon(polygon)
+        collision.data["polygon"] = polygon.body # polygon is an object of Polygon
+        collision.data["arms_data"] = armData # armData is a disctionary that contains the information about arms.
         # if frameNumber%agentActive == 0:
         #     inputVector = []
         #     for arm in arms:
