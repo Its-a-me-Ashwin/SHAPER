@@ -524,11 +524,9 @@ def multiProcessingMain():
 ## Currently, we should monitor the training and change the scoring function when the accuracy starts to plataue.
 from matplotlib import pyplot as plt
 if __name__ == "__main__":
-    lAgent= createAgent()
-    play(agent=lAgent)
-
-
-    # try:
-    #     multiProcessingMain()
-    # except KeyboardInterrupt:
-    #     sys.exit()
+    # lAgent= createAgent()
+    # play(agent=lAgent)
+    try:
+        multiProcessingMain()
+    except KeyboardInterrupt:
+        sys.exit()
