@@ -151,14 +151,9 @@ def getRandomPositionForCannon():
 ## If path is not none we will load the weights from the disk.
 def play(display=True, agent=None, path=None, scoreFrameFunc=lambda:0, scoreFullGameFunc= lambda:0, pipeCom=None):
     maxFrames = 60*120
-    # powerList = np.load("./power.npy", allow_pickle=True)
-    # angleList = np.load("./angle.npy", allow_pickle=True)
-
-    # powerList = []
-    # angleList = []
 
     if agent != None and path != None:
-        agent.loaad(path)
+        agent.load(path)
 
     ### PyGame init
     if display:
@@ -192,8 +187,8 @@ def play(display=True, agent=None, path=None, scoreFrameFunc=lambda:0, scoreFull
 
     safeWallsExtras: List[pymunk.Shape] = [
         #pymunk.Segment(space.static_body, (1000, 100), (1000, 250), 5),
-        #pymunk.Segment(space.static_body, (1100, 250), (1300, 250), 5),
-        #pymunk.Segment(space.static_body, (1300, 250), (1300, 100), 5),
+        pymunk.Segment(space.static_body, (1100, 250), (1300, 250), 5),
+        pymunk.Segment(space.static_body, (1300, 250), (1300, 100), 5),
         pymunk.Segment(space.static_body, (1100, 100), (1300, 100), 5),
     ]
 
@@ -339,10 +334,12 @@ def play(display=True, agent=None, path=None, scoreFrameFunc=lambda:0, scoreFull
             inputVector.append((power-7500)/5000)
             inputVector = np.array(inputVector)
             inputVector = np.clip(inputVector, a_min=-1, a_max=1)/10
+  
             if agent != None:
                 rawOut = agent.forwardPass(inputVector)
                 output = np.clip(rawOut*1.1, a_min=-10, a_max=10)
-                arm1.agentToPhysics(output, maxSpeed=1.2)
+                #print(output)
+                arm1.agentToPhysicsLocation(output, maxSpeed=1.2)
 
 
         for flying_arrow in flying_arrows:
@@ -527,7 +524,11 @@ def multiProcessingMain():
 ## Currently, we should monitor the training and change the scoring function when the accuracy starts to plataue.
 from matplotlib import pyplot as plt
 if __name__ == "__main__":
-    try:
-        multiProcessingMain()
-    except KeyboardInterrupt:
-        sys.exit()
+    lAgent= createAgent()
+    play(agent=lAgent)
+
+
+    # try:
+    #     multiProcessingMain()
+    # except KeyboardInterrupt:
+    #     sys.exit()

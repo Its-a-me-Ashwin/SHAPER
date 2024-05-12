@@ -1,6 +1,7 @@
 import pymunk
 from pymunk import SimpleMotor
 from math import atan2, sin, cos, sqrt
+import numpy as np
 
 
 MASS_PER_LENGTH = 10
@@ -150,7 +151,7 @@ class Arm():
         pass
 
 
-    ## Converts that sets the motor speeds based on the agent's output.
+    ## Converts that sets the motor speeds based on the nt's output.
     ## agentData is a list where values are between -1 and 1
     ## The grab and release mechanisim will be handled in the main routine.
     def agentToPhysics(self, agentData, maxSpeed=4):
@@ -159,7 +160,30 @@ class Arm():
         for idx in range(len(agentData)):
             self.Objects[idx]["Motor"].rate = agentData[idx]*maxSpeed
         return
+    
 
+    ## Allows the agent to set an angle that the arm will move to.
+    ## Has a PID loop to set it self to the correct angle.
+    def agentToPhysicsLocation(self, agentData, maxSpeed=4):
+        if len(agentData) != len(self.Objects):
+            return
+        agentData = np.clip(agentData, a_min=-PI, a_max=PI)
+
+        diff = [0]*len(self.Objects)
+        mSpeed = [0]*len(self.Objects)
+
+        for idx in range(len(self.Objects)):
+            diff[idx] = self.Objects[idx]["Object"].angle - agentData[idx]
+            mSpeed[idx] = diff[idx] * P_ + diff[idx] * D_ + diff[idx] * I_
+
+
+        mSpeed = np.array(mSpeed)
+        mSpeed = np.clip(mSpeed, a_min=-maxSpeed, a_max=maxSpeed)
+
+        for idx in range(len(mSpeed)):
+            self.Objects[idx]["Motor"].rate = mSpeed[idx]
+        return
+        
     ## Converts the data from the physcis engine to a format that can be processed by the agent
     ## Normalize the angles and the position of the bodies. Convert to radians if necessary.
     def physicsToAgent(self):
